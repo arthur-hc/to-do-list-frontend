@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -19,6 +19,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import MyToast from './MyToast';
 import {
   getTasks,
   createTask,
@@ -40,19 +41,38 @@ export default function TodoList() {
   const [newDescription, setNewDescription] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showError, setShowError] = useState(false);
+  const [toastSeverity, setToastSeverity] = useState<
+    'error' | 'warning' | 'info' | 'success'
+  >('error');
 
-  const fetchTasks = async () => {
+  const showToast = (
+    message: string,
+    severity: 'error' | 'warning' | 'info' | 'success' = 'error'
+  ) => {
+    setErrorMessage(message);
+    setToastSeverity(severity);
+    setShowError(true);
+  };
+
+  const handleCloseError = () => {
+    setShowError(false);
+  };
+
+  const fetchTasks = useCallback(async () => {
     try {
       const data = await getTasks(filter);
       setTasks(data);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      showToast('Erro ao carregar as tarefas. Tente novamente.', 'error');
     }
-  };
+  }, [filter]);
 
   useEffect(() => {
     fetchTasks();
-  }, [filter]);
+  }, [filter, fetchTasks]);
 
   const handleAddTask = async () => {
     if (!newTask.trim() || !newDescription.trim()) return;
@@ -62,8 +82,10 @@ export default function TodoList() {
       setNewTask('');
       setNewDescription('');
       fetchTasks();
+      showToast('Tarefa criada com sucesso!', 'success');
     } catch (error) {
       console.error('Error creating task:', error);
+      showToast('Erro ao criar a tarefa', 'error');
     }
   };
 
@@ -71,8 +93,11 @@ export default function TodoList() {
     try {
       await updateTaskStatus(taskId, !completed);
       fetchTasks();
+      const status = !completed ? 'concluída' : 'reaberta';
+      showToast(`Tarefa ${status} com sucesso!`, 'success');
     } catch (error) {
       console.error('Error updating task:', error);
+      showToast('Erro ao atualizar o status da tarefa', 'error');
     }
   };
 
@@ -80,8 +105,10 @@ export default function TodoList() {
     try {
       await deleteTask(taskId);
       fetchTasks();
+      showToast('Tarefa excluída com sucesso!', 'success');
     } catch (error) {
       console.error('Error deleting task:', error);
+      showToast('Erro ao excluir a tarefa.', 'error');
     }
   };
 
@@ -90,7 +117,7 @@ export default function TodoList() {
   };
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4, p: 3 }}>
+    <Box sx={{ width: 600, height: 800, mx: 'auto', mt: 4, p: 3 }}>
       <Typography variant="h4" component="h1" gutterBottom align="center">
         Minhas Tarefas
       </Typography>
@@ -118,8 +145,7 @@ export default function TodoList() {
           variant="contained"
           onClick={handleAddTask}
           disabled={!newTask.trim() || !newDescription.trim()}
-          sx={{ width: 150, alignSelf: 'center' }}
-        >
+          sx={{ width: 150, alignSelf: 'center' }}>
           Adicionar
         </Button>
       </Stack>
@@ -129,8 +155,7 @@ export default function TodoList() {
           value={filter}
           exclusive
           onChange={(_, newFilter) => newFilter && setFilter(newFilter)}
-          size="small"
-        >
+          size="small">
           <ToggleButton value="all">TODOS</ToggleButton>
           <ToggleButton value="pending">PENDENTES</ToggleButton>
           <ToggleButton value="completed">CONCLUÍDOS</ToggleButton>
@@ -144,11 +169,11 @@ export default function TodoList() {
           overflow: 'auto',
           width: 500,
           mx: 'auto',
-        }}
-      >
+        }}>
         <List dense>
           {tasks.map((task) => (
             <ListItem
+              sx={{ width: '100%' }}
               key={task.id}
               secondaryAction={
                 <Box sx={{ display: 'flex', gap: 1 }}>
@@ -161,13 +186,11 @@ export default function TodoList() {
                   </IconButton>
                   <IconButton
                     edge="end"
-                    onClick={() => handleDeleteTask(task.id)}
-                  >
+                    onClick={() => handleDeleteTask(task.id)}>
                     <DeleteIcon />
                   </IconButton>
                 </Box>
-              }
-            >
+              }>
               <ListItemIcon>
                 <Checkbox
                   edge="start"
@@ -186,8 +209,7 @@ export default function TodoList() {
                       <Typography
                         variant="body2"
                         color="text.secondary"
-                        sx={{ mt: 1 }}
-                      >
+                        sx={{ mt: 1, overflow: 'auto' }}>
                         {task.description}
                       </Typography>
                     </Collapse>
@@ -198,6 +220,13 @@ export default function TodoList() {
           ))}
         </List>
       </Paper>
+
+      <MyToast
+        open={showError}
+        onClose={handleCloseError}
+        severity={toastSeverity}
+        message={errorMessage}
+      />
     </Box>
   );
 }
