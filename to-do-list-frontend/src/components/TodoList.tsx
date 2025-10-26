@@ -25,6 +25,7 @@ import {
   createTask,
   updateTaskStatus,
   deleteTask,
+  logout,
 } from '../services/api';
 
 interface Task {
@@ -35,7 +36,11 @@ interface Task {
   createdAt: string;
 }
 
-export default function TodoList() {
+interface TodoListProps {
+  onLogout?: () => void;
+}
+
+export default function TodoList({ onLogout }: TodoListProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -116,11 +121,39 @@ export default function TodoList() {
     setExpandedTask(expandedTask === taskId ? null : taskId);
   };
 
+  const handleLogout = () => {
+    logout();
+    if (onLogout) {
+      onLogout();
+    }
+  };
+
   return (
     <Box sx={{ width: 600, height: 800, mx: 'auto', mt: 4, p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom align="center">
-        Minhas Tarefas
-      </Typography>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+        }}>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={handleLogout}
+          size="small"
+          sx={{ position: 'absolute', top: 16, right: 16 }}>
+          Sair
+        </Button>
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          align="center"
+          sx={{ flex: 1 }}>
+          Minhas Tarefas
+        </Typography>
+      </Box>
 
       <Stack spacing={2} sx={{ mb: 4, maxWidth: 400, mx: 'auto' }}>
         <TextField
