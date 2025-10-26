@@ -1,8 +1,39 @@
 import axios from 'axios';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: 'http://localhost:3000/api',
 });
+
+const TOKEN_KEY = 'auth_token';
+
+export const saveToken = (token: string) => {
+  localStorage.setItem(TOKEN_KEY, token);
+};
+
+export const getToken = (): string | null => {
+  return localStorage.getItem(TOKEN_KEY);
+};
+
+export const removeToken = () => {
+  localStorage.removeItem(TOKEN_KEY);
+};
+
+export const isAuthenticated = (): boolean => {
+  return !!getToken();
+};
+
+api.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 interface Task {
   id: string;
@@ -11,6 +42,40 @@ interface Task {
   completed: boolean;
   createdAt: string;
 }
+
+interface LoginResponse {
+  message: string;
+  token: string;
+  tokenType: string;
+}
+
+export const authenticate = async (
+  email: string,
+  password: string
+): Promise<LoginResponse> => {
+  try {
+    const response = await api.post<LoginResponse>('/authenticate', {
+      email,
+      password,
+    });
+
+    if (response.data.token) {
+      saveToken(response.data.token);
+    }
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      throw new Error('Credenciais inválidas');
+    }
+    throw error;
+  }
+};
+
+export const logout = () => {
+  removeToken();
+  window.location.href = '/login';
+};
 
 export const getTasks = async (filter?: 'all' | 'pending' | 'completed') => {
   let params = {};
